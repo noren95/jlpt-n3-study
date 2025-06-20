@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}JLPT N3 Quiz - Home{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-language"></i> JLPT N3 Quiz</h1>
+    <p>Master Japanese grammar and sentence translation with interactive quizzes</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="quiz-card">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-gamepad"></i> Choose Quiz Mode
+            </h3>
+            
+            <div class="d-grid gap-3">
+                <a href="/grammar-quiz" class="btn-quiz">
+                    <i class="fas fa-book-open"></i> Grammar Quiz
+                    <br><small>Learn grammar meanings and patterns</small>
+                </a>
+                
+                <a href="/sentence-quiz" class="btn-quiz">
+                    <i class="fas fa-comments"></i> Sentence Translation Quiz
+                    <br><small>Translate Japanese sentences to English</small>
+                </a>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    Both quizzes use real JLPT N3 grammar data from Google Sheets
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="nav-buttons">
+    <a href="/stats" class="nav-btn">
+        <i class="fas fa-chart-bar"></i> View Statistics
+    </a>
+</div>
+{% endblock %} 

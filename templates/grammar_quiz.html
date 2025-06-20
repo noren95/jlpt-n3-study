@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Grammar Quiz - JLPT N3{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-book-open"></i> Grammar Quiz</h1>
+    <p>Test your knowledge of JLPT N3 grammar patterns</p>
+</div>
+
+<div class="nav-buttons">
+    <a href="/" class="nav-btn"><i class="fas fa-home"></i> Home</a>
+    <a href="/sentence-quiz" class="nav-btn"><i class="fas fa-comments"></i> Sentence Quiz</a>
+    <a href="/stats" class="nav-btn"><i class="fas fa-chart-bar"></i> Stats</a>
+</div>
+
+<div class="score-display" id="scoreDisplay">
+    Score: <span id="score">0</span> / <span id="total">0</span>
+    (<span id="percentage">0</span>%)
+</div>
+
+<div class="quiz-card" id="quizCard">
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading question...</p>
+    </div>
+    
+    <div id="questionContainer" style="display: none;">
+        <div class="grammar-text" id="grammarText"></div>
+        <div class="japanese-text" id="japaneseText"></div>
+        <div class="example-text" id="exampleText" style="display: none;"></div>
+        
+        <h4 class="mt-4 mb-3">What does this grammar mean?</h4>
+        
+        <div id="optionsContainer"></div>
+        
+        <div class="text-center mt-4">
+            <button class="btn-quiz" onclick="loadNextQuestion()">
+                <i class="fas fa-arrow-right"></i> Next Question
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentScore = 0;
+let totalQuestions = 0;
+let currentQuestion = null;
+
+// Load initial question
+document.addEventListener('DOMContentLoaded', function() {
+    loadNextQuestion();
+});
+
+function loadNextQuestion() {
+    // Reset button states
+    const buttons = document.querySelectorAll('.btn-option');
+    buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('correct', 'incorrect');
+    });
+    
+    // Load new question
+    fetchNextQuestion();
+}
+
+function fetchNextQuestion() {
+    // Show loading
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('questionContainer').style.display = 'none';
+    
+    fetch('/api/grammar-question')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error loading question: ' + data.error);
+                return;
+            }
+            
+            currentQuestion = data;
+            displayQuestion(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load question. Please try again.');
+        });
+}
+
+function displayQuestion(question) {
+    // Hide loading, show question
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('questionContainer').style.display = 'block';
+    
+    // Display question content
+    document.getElementById('grammarText').textContent = question.grammar;
+    document.getElementById('japaneseText').textContent = question.japanese;
+    
+    // Show example if available
+    const exampleElement = document.getElementById('exampleText');
+    if (question.example && question.example !== 'N/A') {
+        exampleElement.textContent = question.example;
+        exampleElement.style.display = 'block';
+    } else {
+        exampleElement.style.display = 'none';
+    }
+    
+    // Create option buttons
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+    
+    question.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'btn-option w-100';
+        button.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+        button.onclick = () => selectOption(option, button);
+        optionsContainer.appendChild(button);
+    });
+}
+
+function selectOption(selectedOption, buttonElement) {
+    // Disable all buttons
+    const buttons = document.querySelectorAll('.btn-option');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    // Check if answer is correct
+    const isCorrect = selectedOption === currentQuestion.correct;
+    
+    if (isCorrect) {
+        buttonElement.classList.add('correct');
+        currentScore++;
+    } else {
+        buttonElement.classList.add('incorrect');
+        // Show correct answer
+        buttons.forEach(btn => {
+            if (btn.textContent.includes(currentQuestion.correct)) {
+                btn.classList.add('correct');
+            }
+        });
+    }
+    
+    totalQuestions++;
+    updateScore();
+    
+    // Show feedback
+    setTimeout(() => {
+        if (isCorrect) {
+            showFeedback('Correct! 🎉', 'success');
+        } else {
+            showFeedback(`Wrong! The correct answer is: ${currentQuestion.correct}`, 'error');
+        }
+    }, 500);
+}
+
+function showFeedback(message, type) {
+    const feedback = document.createElement('div');
+    feedback.className = `alert alert-${type === 'success' ? 'success' : 'danger'} mt-3`;
+    feedback.textContent = message;
+    
+    const container = document.getElementById('questionContainer');
+    container.appendChild(feedback);
+    
+    setTimeout(() => {
+        feedback.remove();
+    }, 3000);
+}
+
+function updateScore() {
+    document.getElementById('score').textContent = currentScore;
+    document.getElementById('total').textContent = totalQuestions;
+    
+    const percentage = totalQuestions > 0 ? Math.round((currentScore / totalQuestions) * 100) : 0;
+    document.getElementById('percentage').textContent = percentage;
+}
+</script>
+{% endblock %} 

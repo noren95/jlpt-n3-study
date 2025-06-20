@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - JLPT N3 Quiz{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-chart-bar"></i> Quiz Statistics</h1>
+    <p>Track your progress and achievements</p>
+</div>
+
+<div class="nav-buttons">
+    <a href="/" class="nav-btn"><i class="fas fa-home"></i> Home</a>
+    <a href="/grammar-quiz" class="nav-btn"><i class="fas fa-book-open"></i> Grammar Quiz</a>
+    <a href="/sentence-quiz" class="nav-btn"><i class="fas fa-comments"></i> Sentence Quiz</a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="quiz-card">
+            <h3><i class="fas fa-book-open"></i> Grammar Quiz Stats</h3>
+            <div class="score-display">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h4 id="grammarScore">0</h4>
+                        <small>Correct</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 id="grammarTotal">0</h4>
+                        <small>Total</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 id="grammarPercentage">0%</h4>
+                        <small>Accuracy</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="quiz-card">
+            <h3><i class="fas fa-comments"></i> Sentence Quiz Stats</h3>
+            <div class="score-display">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h4 id="sentenceScore">0</h4>
+                        <small>Correct</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 id="sentenceTotal">0</h4>
+                        <small>Total</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 id="sentencePercentage">0%</h4>
+                        <small>Accuracy</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="quiz-card">
+    <h3><i class="fas fa-trophy"></i> Achievements</h3>
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <div class="achievement" id="firstQuiz">
+                <i class="fas fa-star fa-3x text-warning"></i>
+                <h5>First Quiz</h5>
+                <p>Complete your first quiz</p>
+            </div>
+        </div>
+        <div class="col-md-4 text-center">
+            <div class="achievement" id="perfectScore">
+                <i class="fas fa-crown fa-3x text-warning"></i>
+                <h5>Perfect Score</h5>
+                <p>Get 100% on any quiz</p>
+            </div>
+        </div>
+        <div class="col-md-4 text-center">
+            <div class="achievement" id="quizMaster">
+                <i class="fas fa-medal fa-3x text-warning"></i>
+                <h5>Quiz Master</h5>
+                <p>Complete 50 questions</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="quiz-card">
+    <h3><i class="fas fa-info-circle"></i> About JLPT N3</h3>
+    <div class="row">
+        <div class="col-md-6">
+            <h5>What is JLPT N3?</h5>
+            <p>The Japanese Language Proficiency Test (JLPT) N3 is an intermediate level exam that tests your ability to understand Japanese used in everyday situations.</p>
+        </div>
+        <div class="col-md-6">
+            <h5>What you'll learn:</h5>
+            <ul>
+                <li>Intermediate grammar patterns</li>
+                <li>Everyday vocabulary</li>
+                <li>Reading comprehension</li>
+                <li>Listening skills</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load statistics from localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+});
+
+function loadStats() {
+    // Load grammar quiz stats
+    const grammarScore = localStorage.getItem('grammarScore') || 0;
+    const grammarTotal = localStorage.getItem('grammarTotal') || 0;
+    const grammarPercentage = grammarTotal > 0 ? Math.round((grammarScore / grammarTotal) * 100) : 0;
+    
+    document.getElementById('grammarScore').textContent = grammarScore;
+    document.getElementById('grammarTotal').textContent = grammarTotal;
+    document.getElementById('grammarPercentage').textContent = grammarPercentage + '%';
+    
+    // Load sentence quiz stats
+    const sentenceScore = localStorage.getItem('sentenceScore') || 0;
+    const sentenceTotal = localStorage.getItem('sentenceTotal') || 0;
+    const sentencePercentage = sentenceTotal > 0 ? Math.round((sentenceScore / sentenceTotal) * 100) : 0;
+    
+    document.getElementById('sentenceScore').textContent = sentenceScore;
+    document.getElementById('sentenceTotal').textContent = sentenceTotal;
+    document.getElementById('sentencePercentage').textContent = sentencePercentage + '%';
+    
+    // Check achievements
+    checkAchievements();
+}
+
+function checkAchievements() {
+    const grammarTotal = parseInt(localStorage.getItem('grammarTotal') || 0);
+    const sentenceTotal = parseInt(localStorage.getItem('sentenceTotal') || 0);
+    const totalQuestions = grammarTotal + sentenceTotal;
+    
+    // First Quiz achievement
+    if (totalQuestions > 0) {
+        document.getElementById('firstQuiz').style.opacity = '1';
+    }
+    
+    // Perfect Score achievement
+    const grammarPercentage = grammarTotal > 0 ? Math.round((parseInt(localStorage.getItem('grammarScore') || 0) / grammarTotal) * 100) : 0;
+    const sentencePercentage = sentenceTotal > 0 ? Math.round((parseInt(localStorage.getItem('sentenceScore') || 0) / sentenceTotal) * 100) : 0;
+    
+    if (grammarPercentage === 100 || sentencePercentage === 100) {
+        document.getElementById('perfectScore').style.opacity = '1';
+    }
+    
+    // Quiz Master achievement
+    if (totalQuestions >= 50) {
+        document.getElementById('quizMaster').style.opacity = '1';
+    }
+}
+</script>
+
+<style>
+.achievement {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    padding: 20px;
+}
+
+.achievement h5 {
+    margin-top: 15px;
+    color: var(--secondary-color);
+}
+
+.achievement p {
+    color: #6c757d;
+    font-size: 14px;
+}
+</style>
+{% endblock %} 
