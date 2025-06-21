@@ -14,12 +14,50 @@
     <a href="/stats" class="nav-btn"><i class="fas fa-chart-bar"></i> Stats</a>
 </div>
 
-<div class="score-display" id="scoreDisplay">
+<!-- Start Screen -->
+<div class="quiz-start" id="quizStart">
+    <div class="start-card">
+        <h2><i class="fas fa-play-circle"></i> Start Grammar Quiz</h2>
+        <p>This quiz contains 20 questions covering different JLPT N3 grammar points.</p>
+        <p><strong>No grammar points will be repeated!</strong></p>
+        <div class="quiz-info">
+            <div class="info-item">
+                <i class="fas fa-question-circle"></i>
+                <span>20 Questions</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-clock"></i>
+                <span>No time limit</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-star"></i>
+                <span>Multiple choice</span>
+            </div>
+        </div>
+        <button class="btn-start" onclick="startQuiz()">
+            <i class="fas fa-rocket"></i> Start Quiz
+        </button>
+    </div>
+</div>
+
+<!-- Quiz Progress -->
+<div class="quiz-progress" id="quizProgress" style="display: none;">
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text">
+        Question <span id="currentQuestion">1</span> of <span id="totalQuestions">20</span>
+    </div>
+</div>
+
+<!-- Score Display -->
+<div class="score-display" id="scoreDisplay" style="display: none;">
     Score: <span id="score">0</span> / <span id="total">0</span>
     (<span id="percentage">0</span>%)
 </div>
 
-<div class="quiz-card" id="quizCard">
+<!-- Quiz Card -->
+<div class="quiz-card" id="quizCard" style="display: none;">
     <div class="loading" id="loading">
         <div class="spinner"></div>
         <p>Loading question...</p>
@@ -34,9 +72,44 @@
         
         <div id="optionsContainer"></div>
         
-        <div class="text-center mt-4">
-            <button class="btn-quiz" onclick="loadNextQuestion()">
+        <div class="text-center mt-4" id="actionButtons">
+            <button class="btn-quiz" id="nextButton" onclick="submitAnswer()" style="display: none;">
                 <i class="fas fa-arrow-right"></i> Next Question
+            </button>
+            <button class="btn-quiz" id="finishButton" onclick="finishQuiz()" style="display: none;">
+                <i class="fas fa-flag-checkered"></i> Finish Quiz
+            </button>
+        </div>
+
+        <!-- Knowledge Level Buttons -->
+        <div id="knowledgeButtons" class="mt-4" style="display: none;">
+            <h6 class="text-muted">My knowledge level of this grammar is:</h6>
+            <button class="btn btn-success knowledge-btn" data-level="good" onclick="updateKnowledge('good')"><i class="fas fa-check"></i> Good</button>
+            <button class="btn btn-warning knowledge-btn" data-level="medium" onclick="updateKnowledge('medium')"><i class="fas fa-question"></i> Medium</button>
+            <button class="btn btn-danger knowledge-btn" data-level="dont_know" onclick="updateKnowledge('dont_know')"><i class="fas fa-times"></i> Don't Know</button>
+        </div>
+    </div>
+</div>
+
+<!-- Results Screen -->
+<div class="quiz-results" id="quizResults" style="display: none;">
+    <div class="results-card">
+        <h2><i class="fas fa-trophy"></i> Quiz Complete!</h2>
+        <div class="final-score">
+            <div class="score-circle">
+                <span id="finalScore">0</span>/<span id="finalTotal">20</span>
+            </div>
+            <div class="score-percentage">
+                <span id="finalPercentage">0</span>%
+            </div>
+        </div>
+        <div class="score-message" id="scoreMessage"></div>
+        <div class="action-buttons">
+            <button class="btn-restart" onclick="restartQuiz()">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
+            <button class="btn-home" onclick="goHome()">
+                <i class="fas fa-home"></i> Back to Home
             </button>
         </div>
     </div>
@@ -45,33 +118,50 @@
 
 {% block scripts %}
 <script>
+let currentQuestionIndex = 0;
+let totalQuestions = 20;
 let currentScore = 0;
-let totalQuestions = 0;
 let currentQuestion = null;
+let selectedAnswer = null;
+let quizStarted = false;
 
-// Load initial question
-document.addEventListener('DOMContentLoaded', function() {
-    loadNextQuestion();
-});
-
-function loadNextQuestion() {
-    // Reset button states
-    const buttons = document.querySelectorAll('.btn-option');
-    buttons.forEach(btn => {
-        btn.disabled = false;
-        btn.classList.remove('correct', 'incorrect');
-    });
-    
-    // Load new question
-    fetchNextQuestion();
+// Start the quiz
+function startQuiz() {
+    fetch('/api/start-grammar-quiz')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error starting quiz: ' + data.error);
+                return;
+            }
+            
+            quizStarted = true;
+            currentQuestionIndex = 0;
+            currentScore = 0;
+            totalQuestions = data.total_questions;
+            
+            // Show quiz interface
+            document.getElementById('quizStart').style.display = 'none';
+            document.getElementById('quizProgress').style.display = 'block';
+            document.getElementById('scoreDisplay').style.display = 'block';
+            document.getElementById('quizCard').style.display = 'block';
+            
+            // Load first question
+            loadQuestion(0);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to start quiz. Please try again.');
+        });
 }
 
-function fetchNextQuestion() {
+// Load a specific question
+function loadQuestion(questionIndex) {
     // Show loading
     document.getElementById('loading').style.display = 'block';
     document.getElementById('questionContainer').style.display = 'none';
     
-    fetch('/api/grammar-question')
+    fetch(`/api/grammar-quiz-question/${questionIndex}`)
         .then(response => response.json())
         .then(data => {
             if (data.error) {
@@ -80,7 +170,9 @@ function fetchNextQuestion() {
             }
             
             currentQuestion = data;
+            currentQuestionIndex = data.question_index;
             displayQuestion(data);
+            updateProgress();
         })
         .catch(error => {
             console.error('Error:', error);
@@ -88,10 +180,30 @@ function fetchNextQuestion() {
         });
 }
 
+// Display the question
 function displayQuestion(question) {
     // Hide loading, show question
     document.getElementById('loading').style.display = 'none';
     document.getElementById('questionContainer').style.display = 'block';
+    
+    // Remove any existing feedback alerts from previous question
+    const existingFeedback = document.querySelector('#questionContainer .alert');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    // Reset button states
+    document.getElementById('knowledgeButtons').style.display = 'block';
+    const buttons = document.querySelectorAll('.btn-option');
+    buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('correct', 'incorrect', 'selected');
+    });
+    
+    // Hide action buttons
+    document.getElementById('actionButtons').style.display = 'none';
+    document.getElementById('nextButton').style.display = 'none';
+    document.getElementById('finishButton').style.display = 'none';
     
     // Display question content
     document.getElementById('grammarText').textContent = question.grammar;
@@ -117,19 +229,24 @@ function displayQuestion(question) {
         button.onclick = () => selectOption(option, button);
         optionsContainer.appendChild(button);
     });
+    
+    selectedAnswer = null;
+    updateKnowledgeButtonUI(question.level);
 }
 
+// Select an option
 function selectOption(selectedOption, buttonElement) {
     // Disable all buttons
     const buttons = document.querySelectorAll('.btn-option');
     buttons.forEach(btn => btn.disabled = true);
+    
+    selectedAnswer = selectedOption;
     
     // Check if answer is correct
     const isCorrect = selectedOption === currentQuestion.correct;
     
     if (isCorrect) {
         buttonElement.classList.add('correct');
-        currentScore++;
     } else {
         buttonElement.classList.add('incorrect');
         // Show correct answer
@@ -140,38 +257,118 @@ function selectOption(selectedOption, buttonElement) {
         });
     }
     
-    totalQuestions++;
-    updateScore();
+    // Show appropriate action button
+    document.getElementById('actionButtons').style.display = 'block';
+    if (currentQuestionIndex === totalQuestions - 1) {
+        document.getElementById('finishButton').style.display = 'inline-block';
+    } else {
+        document.getElementById('nextButton').style.display = 'inline-block';
+    }
+}
+
+// Submit answer and move to next question
+function submitAnswer() {
+    if (selectedAnswer === null) {
+        alert('Please select an answer first.');
+        return;
+    }
     
-    // Show feedback
-    setTimeout(() => {
-        if (isCorrect) {
-            showFeedback('Correct! 🎉', 'success');
-        } else {
-            showFeedback(`Wrong! The correct answer is: ${currentQuestion.correct}`, 'error');
+    fetch('/api/submit-grammar-answer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            answer: selectedAnswer,
+            question_index: currentQuestionIndex
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error submitting answer: ' + data.error);
+            return;
         }
-    }, 500);
+        
+        // Update score
+        currentScore = data.score;
+        updateScore();
+        
+        // Move to next question immediately
+        if (!data.is_last_question) {
+            loadQuestion(data.next_question_index);
+        } else {
+            finishQuiz();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to submit answer. Please try again.');
+    });
 }
 
-function showFeedback(message, type) {
-    const feedback = document.createElement('div');
-    feedback.className = `alert alert-${type === 'success' ? 'success' : 'danger'} mt-3`;
-    feedback.textContent = message;
+// Finish the quiz
+function finishQuiz() {
+    // Hide quiz interface
+    document.getElementById('quizProgress').style.display = 'none';
+    document.getElementById('scoreDisplay').style.display = 'none';
+    document.getElementById('quizCard').style.display = 'none';
     
-    const container = document.getElementById('questionContainer');
-    container.appendChild(feedback);
+    // Show results
+    document.getElementById('quizResults').style.display = 'block';
     
-    setTimeout(() => {
-        feedback.remove();
-    }, 3000);
+    // Update final score
+    document.getElementById('finalScore').textContent = currentScore;
+    document.getElementById('finalTotal').textContent = totalQuestions;
+    
+    const percentage = Math.round((currentScore / totalQuestions) * 100);
+    document.getElementById('finalPercentage').textContent = percentage;
+    
+    // Set score message
+    const scoreMessage = document.getElementById('scoreMessage');
+    if (percentage >= 90) {
+        scoreMessage.innerHTML = '<i class="fas fa-star"></i> Excellent! You have mastered these grammar points!';
+        scoreMessage.className = 'score-message excellent';
+    } else if (percentage >= 70) {
+        scoreMessage.innerHTML = '<i class="fas fa-thumbs-up"></i> Good job! Keep practicing to improve further.';
+        scoreMessage.className = 'score-message good';
+    } else if (percentage >= 50) {
+        scoreMessage.innerHTML = '<i class="fas fa-hand-holding-heart"></i> Not bad! Review the grammar points you missed.';
+        scoreMessage.className = 'score-message okay';
+    } else {
+        scoreMessage.innerHTML = '<i class="fas fa-book"></i> Keep studying! Review the grammar points and try again.';
+        scoreMessage.className = 'score-message needs-work';
+    }
 }
 
+// Restart the quiz
+function restartQuiz() {
+    document.getElementById('quizResults').style.display = 'none';
+    startQuiz();
+}
+
+// Go back to home
+function goHome() {
+    window.location.href = '/';
+}
+
+// Update progress bar
+function updateProgress() {
+    const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('currentQuestion').textContent = currentQuestionIndex + 1;
+    document.getElementById('totalQuestions').textContent = totalQuestions;
+}
+
+// Update score display
 function updateScore() {
     document.getElementById('score').textContent = currentScore;
-    document.getElementById('total').textContent = totalQuestions;
+    document.getElementById('total').textContent = currentQuestionIndex + 1;
     
-    const percentage = totalQuestions > 0 ? Math.round((currentScore / totalQuestions) * 100) : 0;
+    const percentage = currentQuestionIndex > 0 ? Math.round((currentScore / (currentQuestionIndex + 1)) * 100) : 0;
     document.getElementById('percentage').textContent = percentage;
 }
+
+function updateKnowledgeButtonUI(level) {
 </script>
 {% endblock %} 

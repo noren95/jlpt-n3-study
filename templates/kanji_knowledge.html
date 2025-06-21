@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Kanji Knowledge Track{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-tasks"></i> Kanji Knowledge Track</h1>
+    <p>Review the kanji you have categorized.</p>
+</div>
+
+<div class="nav-buttons">
+    <a href="/" class="nav-btn"><i class="fas fa-home"></i> Home</a>
+    <a href="/kanji-quiz" class="nav-btn"><i class="fas fa-language"></i> Kanji Quiz</a>
+</div>
+
+<div class="row mt-4">
+    <!-- Good Column -->
+    <div class="col-md-4">
+        <div class="card knowledge-card">
+            <div class="card-header bg-success text-white">
+                <h4><i class="fas fa-check-circle"></i> Good</h4>
+            </div>
+            <div class="card-body">
+                <div class="kanji-grid">
+                    {% for kanji in categorized.good %}
+                        <div class="kanji-item">{{ kanji }}</div>
+                    {% else %}
+                        <p class="text-muted">No kanji marked as 'Good' yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medium Column -->
+    <div class="col-md-4">
+        <div class="card knowledge-card">
+            <div class="card-header bg-warning text-dark">
+                <h4><i class="fas fa-exclamation-circle"></i> Medium</h4>
+            </div>
+            <div class="card-body">
+                <div class="kanji-grid">
+                    {% for kanji in categorized.medium %}
+                        <div class="kanji-item">{{ kanji }}</div>
+                    {% else %}
+                        <p class="text-muted">No kanji marked as 'Medium' yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Don't Know Column -->
+    <div class="col-md-4">
+        <div class="card knowledge-card">
+            <div class="card-header bg-danger text-white">
+                <h4><i class="fas fa-times-circle"></i> Don't Know</h4>
+            </div>
+            <div class="card-body">
+                <div class="kanji-grid">
+                    {% for kanji in categorized.dont_know %}
+                        <div class="kanji-item">{{ kanji }}</div>
+                    {% else %}
+                        <p class="text-muted">No kanji marked as 'Don't Know' yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.knowledge-card {
+    margin-bottom: 20px;
+}
+.kanji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.kanji-item {
+    font-size: 2rem;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    min-width: 50px;
+    text-align: center;
+}
+</style>
+{% endblock %} 

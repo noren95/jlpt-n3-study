@@ -58,6 +58,20 @@
                             <div id="optionsContainer" class="row g-3">
                                 <!-- Options will be populated here -->
                             </div>
+
+                            <!-- Knowledge Level Buttons -->
+                            <div id="knowledgeButtons" class="mt-4">
+                                <h6 class="text-muted">My knowledge level of this Kanji is:</h6>
+                                <button class="btn btn-success knowledge-btn" data-level="good" onclick="updateKnowledge('good')">
+                                    <i class="fas fa-check"></i> Good
+                                </button>
+                                <button class="btn btn-warning knowledge-btn" data-level="medium" onclick="updateKnowledge('medium')">
+                                    <i class="fas fa-question"></i> Medium
+                                </button>
+                                <button class="btn btn-danger knowledge-btn" data-level="dont_know" onclick="updateKnowledge('dont_know')">
+                                    <i class="fas fa-times"></i> Don't Know
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Sentence Question -->
@@ -199,54 +213,79 @@ function displayQuestion(data) {
     // Update question number
     document.getElementById('questionNumber').textContent = questionCount + 1;
     
-    // Hide both question types initially
-    document.getElementById('multipleChoiceQuestion').classList.add('d-none');
+    // Hide sentence question, show classic kanji question
+    document.getElementById('multipleChoiceQuestion').classList.remove('d-none');
     document.getElementById('sentenceQuestion').classList.add('d-none');
     
-    if (data.type === 'sentence') {
-        // Display sentence question
-        document.getElementById('sentenceQuestion').classList.remove('d-none');
-        document.getElementById('japaneseSentence').textContent = data.japanese;
-        document.getElementById('sentenceAnswer').value = '';
-        document.getElementById('sentenceAnswer').focus();
-    } else if (data.type === 'classic') {
-        // Display classic kanji question
-        document.getElementById('multipleChoiceQuestion').classList.remove('d-none');
-        document.getElementById('kanjiCharacter').textContent = data.kanji;
-        document.getElementById('questionText').textContent = data.question;
-        
-        // Display readings if available
-        const readingsDisplay = document.getElementById('readingsDisplay');
-        const readings = [];
-        if (data.onyomi && data.onyomi !== 'N/A') {
-            readings.push(`音読み: ${data.onyomi}`);
+    // Display classic kanji question
+    document.getElementById('kanjiCharacter').textContent = data.kanji;
+    document.getElementById('questionText').textContent = data.question;
+    
+    // Display readings if available
+    const readingsDisplay = document.getElementById('readingsDisplay');
+    const readings = [];
+    if (data.onyomi && data.onyomi !== 'N/A') {
+        readings.push(`音読み: ${data.onyomi}`);
+    }
+    if (data.kunyomi && data.kunyomi !== 'N/A') {
+        readings.push(`訓読み: ${data.kunyomi}`);
+    }
+    
+    if (readings.length > 0) {
+        readingsDisplay.innerHTML = `<p class="text-muted fs-6">📖 ${readings.join(' | ')}</p>`;
+    } else {
+        readingsDisplay.innerHTML = '';
+    }
+    
+    // Create options
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+    
+    data.options.forEach((option, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'col-md-6';
+        optionDiv.innerHTML = `
+            <button class="btn btn-outline-primary btn-lg w-100 option-btn" 
+                    data-option="${option}" 
+                    onclick="selectOption('${option}')">
+                ${option}
+            </button>
+        `;
+        optionsContainer.appendChild(optionDiv);
+    });
+
+    // Set knowledge button state
+    updateKnowledgeButtonUI(data.level);
+}
+
+function updateKnowledgeButtonUI(level) {
+    document.querySelectorAll('.knowledge-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.level === level) {
+            btn.classList.add('active');
         }
-        if (data.kunyomi && data.kunyomi !== 'N/A') {
-            readings.push(`訓読み: ${data.kunyomi}`);
-        }
-        
-        if (readings.length > 0) {
-            readingsDisplay.innerHTML = `<p class="text-muted fs-6">📖 ${readings.join(' | ')}</p>`;
-        } else {
-            readingsDisplay.innerHTML = '';
-        }
-        
-        // Create options
-        const optionsContainer = document.getElementById('optionsContainer');
-        optionsContainer.innerHTML = '';
-        
-        data.options.forEach((option, index) => {
-            const optionDiv = document.createElement('div');
-            optionDiv.className = 'col-md-6';
-            optionDiv.innerHTML = `
-                <button class="btn btn-outline-primary btn-lg w-100 option-btn" 
-                        data-option="${option}" 
-                        onclick="selectOption('${option}')">
-                    ${option}
-                </button>
-            `;
-            optionsContainer.appendChild(optionDiv);
+    });
+}
+
+async function updateKnowledge(level) {
+    if (!currentQuestion || !currentQuestion.kanji) return;
+
+    try {
+        const response = await fetch('/api/update-kanji-knowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kanji: currentQuestion.kanji, level: level })
         });
+        if (!response.ok) {
+            throw new Error('Failed to update knowledge level');
+        }
+        const data = await response.json();
+        if (data.success) {
+            updateKnowledgeButtonUI(level);
+        }
+    } catch (error) {
+        console.error('Error updating knowledge:', error);
+        alert('Could not update knowledge level.');
     }
 }
 

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Vocabulary Quiz - JLPT N3{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-spell-check"></i> Vocabulary Quiz</h1>
+    <p>Test your knowledge of JLPT N3 vocabulary</p>
+</div>
+
+<div class="nav-buttons">
+    <a href="/" class="nav-btn"><i class="fas fa-home"></i> Home</a>
+    <a href="/grammar-quiz" class="nav-btn"><i class="fas fa-book-open"></i> Grammar Quiz</a>
+    <a href="/kanji-quiz" class="nav-btn"><i class="fas fa-language"></i> Kanji Quiz</a>
+</div>
+
+<!-- Start Screen -->
+<div class="quiz-start" id="quizStart">
+    <div class="start-card">
+        <h2><i class="fas fa-play-circle"></i> Start Vocabulary Quiz</h2>
+        <p>This quiz contains 20 questions on JLPT N3 vocabulary.</p>
+        <p><strong>No words will be repeated!</strong></p>
+        <button class="btn-start" onclick="startQuiz()">
+            <i class="fas fa-rocket"></i> Start Quiz
+        </button>
+    </div>
+</div>
+
+<!-- Quiz Progress -->
+<div class="quiz-progress" id="quizProgress" style="display: none;">
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text">
+        Question <span id="currentQuestion">1</span> of <span id="totalQuestions">20</span>
+    </div>
+</div>
+
+<!-- Score Display -->
+<div class="score-display" id="scoreDisplay" style="display: none;">
+    Score: <span id="score">0</span> / <span id="total">0</span>
+    (<span id="percentage">0</span>%)
+</div>
+
+<!-- Quiz Card -->
+<div class="quiz-card" id="quizCard" style="display: none;">
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading question...</p>
+    </div>
+    
+    <div id="questionContainer" style="display: none;">
+        <div class="japanese-text" id="japaneseText"></div>
+        
+        <h4 class="mt-4 mb-3">What does this word mean?</h4>
+        
+        <div id="optionsContainer"></div>
+        
+        <div class="text-center mt-4" id="actionButtons" style="display: none;">
+            <button class="btn-quiz" id="nextButton">
+                <i class="fas fa-arrow-right"></i> Next Question
+            </button>
+        </div>
+
+        <!-- Knowledge Level Buttons -->
+        <div id="knowledgeButtons" class="mt-4">
+            <h6 class="text-muted">My knowledge level of this word is:</h6>
+            <button class="btn btn-success knowledge-btn" data-level="good" onclick="updateKnowledge('good')"><i class="fas fa-check"></i> Good</button>
+            <button class="btn btn-warning knowledge-btn" data-level="medium" onclick="updateKnowledge('medium')"><i class="fas fa-question"></i> Medium</button>
+            <button class="btn btn-danger knowledge-btn" data-level="dont_know" onclick="updateKnowledge('dont_know')"><i class="fas fa-times"></i> Don't Know</button>
+        </div>
+    </div>
+</div>
+
+<!-- Results Screen -->
+<div class="quiz-results" id="quizResults" style="display: none;">
+    <div class="results-card">
+        <h2><i class="fas fa-trophy"></i> Quiz Complete!</h2>
+        <div class="final-score">
+            <div class="score-circle">
+                <span id="finalScore">0</span>/<span id="finalTotal">20</span>
+            </div>
+            <div class="score-percentage">
+                <span id="finalPercentage">0</span>%
+            </div>
+        </div>
+        <div class="score-message" id="scoreMessage"></div>
+        <div class="action-buttons">
+            <button class="btn-restart" onclick="startQuiz()">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
+            <button class="btn-home" onclick="goHome()">
+                <i class="fas fa-home"></i> Back to Home
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentQuestionIndex = 0;
+let totalQuestions = 20;
+let currentScore = 0;
+let currentQuestionData = null;
+let selectedAnswer = null;
+
+function startQuiz() {
+    document.getElementById('quizResults').style.display = 'none';
+    document.getElementById('quizStart').style.display = 'none';
+    fetch('/api/start-vocabulary-quiz')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error starting quiz: ' + data.error);
+                document.getElementById('quizStart').style.display = 'block';
+                return;
+            }
+            currentQuestionIndex = 0;
+            currentScore = 0;
+            totalQuestions = data.total_questions;
+            document.getElementById('quizProgress').style.display = 'block';
+            document.getElementById('scoreDisplay').style.display = 'block';
+            document.getElementById('quizCard').style.display = 'block';
+            loadQuestion(0);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to start quiz. Please try again.');
+            document.getElementById('quizStart').style.display = 'block';
+        });
+}
+
+function loadQuestion(questionIndex) {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('questionContainer').style.display = 'none';
+    fetch(`/api/vocabulary-quiz-question/${questionIndex}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error loading question: ' + data.error);
+                return;
+            }
+            currentQuestionData = data;
+            currentQuestionIndex = data.question_index;
+            displayQuestion(data);
+            updateProgress();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load question. Please try again.');
+        });
+}
+
+function displayQuestion(question) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('questionContainer').style.display = 'block';
+    const actionButtons = document.getElementById('actionButtons');
+    actionButtons.style.display = 'none';
+    const nextButton = document.getElementById('nextButton');
+    nextButton.onclick = null;
+    document.getElementById('japaneseText').textContent = question.word;
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+    question.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'btn-option w-100';
+        button.innerHTML = `${String.fromCharCode(65 + index)}. ${option}`;
+        button.onclick = () => selectOption(option, button);
+        optionsContainer.appendChild(button);
+    });
+    selectedAnswer = null;
+    updateKnowledgeButtonUI(question.level);
+}
+
+function selectOption(selectedOption, buttonElement) {
+    const buttons = document.querySelectorAll('.btn-option');
+    buttons.forEach(btn => btn.disabled = true);
+    selectedAnswer = selectedOption;
+    fetch('/api/submit-vocabulary-answer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ answer: selectedAnswer, question_index: currentQuestionIndex })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.correct) {
+            buttonElement.classList.add('correct');
+            currentScore++;
+        } else {
+            buttonElement.classList.add('incorrect');
+            buttons.forEach(btn => {
+                if (btn.innerHTML.includes(data.correct_answer)) {
+                    btn.classList.add('correct');
+                }
+            });
+        }
+        updateScore();
+        const actionButtons = document.getElementById('actionButtons');
+        actionButtons.style.display = 'block';
+        const nextButton = document.getElementById('nextButton');
+        if (data.is_last_question) {
+            nextButton.innerHTML = '<i class="fas fa-flag-checkered"></i> Finish Quiz';
+            nextButton.onclick = () => finishQuiz();
+        } else {
+            nextButton.innerHTML = '<i class="fas fa-arrow-right"></i> Next Question';
+            nextButton.onclick = () => loadQuestion(currentQuestionIndex + 1);
+        }
+    });
+}
+
+function updateScore() {
+    document.getElementById('score').textContent = currentScore;
+    document.getElementById('total').textContent = currentQuestionIndex + 1;
+    const percentage = currentQuestionIndex >= 0 ? Math.round((currentScore / (currentQuestionIndex + 1)) * 100) : 0;
+    document.getElementById('percentage').textContent = percentage;
+}
+
+function updateProgress() {
+    const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('currentQuestion').textContent = currentQuestionIndex + 1;
+    document.getElementById('totalQuestions').textContent = totalQuestions;
+}
+
+function finishQuiz() {
+    document.getElementById('quizProgress').style.display = 'none';
+    document.getElementById('scoreDisplay').style.display = 'none';
+    document.getElementById('quizCard').style.display = 'none';
+    document.getElementById('quizResults').style.display = 'block';
+    document.getElementById('finalScore').textContent = currentScore;
+    document.getElementById('finalTotal').textContent = totalQuestions;
+    const percentage = Math.round((currentScore / totalQuestions) * 100);
+    document.getElementById('finalPercentage').textContent = percentage;
+    const scoreMessage = document.getElementById('scoreMessage');
+    if (percentage >= 90) {
+        scoreMessage.innerHTML = '<i class="fas fa-star"></i> Excellent! You have mastered these words!';
+        scoreMessage.className = 'score-message excellent';
+    } else if (percentage >= 70) {
+        scoreMessage.innerHTML = '<i class="fas fa-thumbs-up"></i> Good job! Keep practicing.';
+        scoreMessage.className = 'score-message good';
+    } else {
+        scoreMessage.innerHTML = '<i class="fas fa-book"></i> Keep studying! Review the words and try again.';
+        scoreMessage.className = 'score-message needs-work';
+    }
+}
+
+function goHome() {
+    window.location.href = '/';
+}
+
+function updateKnowledgeButtonUI(level) {
+    document.querySelectorAll('.knowledge-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.level === level) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+async function updateKnowledge(level) {
+    if (!currentQuestionData || !currentQuestionData.word) return;
+    try {
+        const response = await fetch('/api/update-vocabulary-knowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ word: currentQuestionData.word, level: level })
+        });
+        if (!response.ok) throw new Error('Failed to update knowledge level');
+        const data = await response.json();
+        if (data.success) {
+            updateKnowledgeButtonUI(level);
+        }
+    } catch (error) {
+        console.error('Error updating knowledge:', error);
+        alert('Could not update knowledge level.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // any initial setup if needed
+});
+</script>
+{% endblock %} 
